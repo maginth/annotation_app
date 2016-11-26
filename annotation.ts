@@ -11,8 +11,8 @@
 
 /*
 	Cette application utilise Vue.js 2
-	Modifiez le fichier de configuration param.js pour ajouter ou supprimer des catégories d'annotations
-	L'intégration dans une page se fait en ajoutant le code html de annotation_app.html (voir l'exemple)
+	Modifiez le fichier de configuration config.js pour ajouter ou supprimer des catégories d'annotations
+	L'intégration dans une page se fait en ajoutant le code html de annotation_app_template.html (voir l'exemple)
 */
 declare var Vue: any
 declare var param:any
@@ -37,22 +37,25 @@ const annotationSet:Annotation[] = [];
 */
 var annotationApp = new Vue({
 	el : "#annotation-app",
-	props: {
+	data: {
 		categories: param.categories,
-		target: param.target,
-		post_adress: param.post_adress,
 		message_submit: ""
 	},
 	methods: {
-		submit_annotations: () => {
+		submit_annotations: function() {
 			Vue.http.post(annotationApp.post_adress, annotationSet).then((response) => {
-		    // TODO success callback
+		    annotationApp.message_submit = "(Success)"
 		  }, (response) => {
 		    annotationApp.message_submit = "(Error)"
 		  });
 		}
 	}
 })
+
+/*
+	scroll to the app
+*/
+window.location.hash = "#annotation-app"
 
 
 /*
@@ -65,6 +68,8 @@ let hotkey:any = {}
 document.addEventListener("keypress", (e:KeyboardEvent) => {
 	if (hotkey[e.key])
 		wrappe_selection(hotkey[e.key])
+	if (e.keyCode == 13)
+		annotationApp.submit_annotations()
 })
 
 /*
@@ -170,6 +175,7 @@ class WordOffsets {
 			while(capture = pattern.exec(this.cleanText))
 				ranges.push(this.getRange(capture.index, capture.index + capture[0].length))
 		}
+		console.log("exit find")
 		return ranges
 	}
 }
@@ -203,24 +209,22 @@ function snapSelectionToWord() {
         let endNode = sel.focusNode, endOffset = sel.focusOffset
 		sel.collapse(sel.anchorNode, sel.anchorOffset)
 		
-        while (isw(regLetter))
-       		sel.modify("move", d2, "character")
-       	while (!isw(regLetter))
+       	for (let i = sel.anchorOffset+m1; i < text.length && !isw(regLetter); i += m1-m2)
        		sel.modify("move", d1, "character")
-
+        for (let i = sel.anchorOffset; i >= 0 && regLetter.test(text[i]); i -= m1-m2)
+       		sel.modify("move", d2, "character")
 
        	sel.extend(endNode, endOffset)
        	text = " " + endNode.textContent + " "
        	isw = (reg:RegExp) => reg.test(text[sel.focusOffset+m2])
-        while (isw(regLetter))
+        for (let i = sel.focusOffset+m2; i < text.length && isw(regLetter); i += m1-m2)
        		sel.modify("extend", d1, "character")
-       	while (!isw(regLetter))
+       	for (let i = sel.focusOffset+m2; i >= 0 && !isw(regLetter); i -= m1-m2)
        		sel.modify("extend", d2, "character")
     }
 }
 
 document.addEventListener("mouseup", snapSelectionToWord)
-setInterval(snapSelectionToWord, 100)
 
 /*
 	permet de vérifié que le contenu n'est pas déjà suligné (= dans un tag)

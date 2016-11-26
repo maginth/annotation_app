@@ -1,0 +1,50 @@
+
+
+<!-- annotation app -->
+
+<style type="text/css" scoped>
+	.button {
+	    padding: 8px 15px;
+	    display: inline-block;
+	    margin: 1em;
+	}
+	.tag_wrapper, .button {
+	    border-radius: 3px;
+	    opacity: 1;
+		transition: opacity 0.7s;
+	}
+	.tag_wrapper:hover, .button:hover {
+		opacity: 0.8;
+	}
+	.key {
+		background-color: #eee;
+		border-radius: 4px;
+		font-size: 1em;
+		font-family: sans-serif;
+		display: inline-block;
+		padding: 0 0.6em;
+		line-height: 1.6em;
+		box-shadow: 1px 2px 1px #fff inset, -1px -2px 1px #aaa inset, 0 0.8px 3px rgba(0,0,20,0.5);
+	}
+	#annotation-app {
+		text-align: center;
+		border: solid #eee 1px;
+	}
+}
+
+</style>
+<div id="annotation-app">
+	<div v-for="category in categories"
+		v-bind:class="'button ' + category.name"
+		v-on:click= "wrappe_selection(category.name)"
+		v-bind:style="'background-color:'  + category.color">
+		{{ category.name }} <div class="key">{{ category.hotkey }}</div>
+	</div>
+	<div class="button submit" v-on:keyup.enter="submit_annotations" v-on:click="submit_annotations" style="background-color: orange">submit {{ message_submit }} <div class="key">↩</div></div>
+</div>
+<script src="node_modules/vue/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/vue.resource/1.0.3/vue-resource.min.js"></script>
+<script src="config.js"></script>
+<script src="annotation.js"></script>
+
+<!-- annotation app -->

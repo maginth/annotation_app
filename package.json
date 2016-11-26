@@ -1,10 +1,11 @@
 {
-  "name": "doctrine_tag_ui",
+  "name": "doctrine_annotation_app",
   "version": "1.0.0",
   "description": "load a text in the ui and tag element for machine learning training",
-  "main": "annot.js",
+  "main": "annotation.ts",
   "scripts": {
-    "test": "echo \"no test yet\""
+    "test": "echo \"no test yet\"",
+    "build": "tsc annotation.ts"
   },
   "repository": {
     "type": "git",
@@ -19,8 +20,6 @@
   "author": "mathieu guinin",
   "license": "ISC",
   "dependencies": {
-    "typescript": "^2.0.10",
-    "vue": "^2.0.8",
-    "vue-resource": "^1.0.3"
+    "typescript": "^2.0.10"
   }
 }
