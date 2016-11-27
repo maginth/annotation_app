@@ -91,7 +91,6 @@ function TagWrapper(type:string, tag) {
 }
 
 function removeTag(tag) {
-	console.log(annotationSet.indexOf(tag.annotation))
 	annotationSet.splice(annotationSet.indexOf(tag.annotation), 1)
 	tag.outerHTML = tag.innerHTML
 }
@@ -175,7 +174,6 @@ class WordOffsets {
 			while(capture = pattern.exec(this.cleanText))
 				ranges.push(this.getRange(capture.index, capture.index + capture[0].length))
 		}
-		console.log("exit find")
 		return ranges
 	}
 }
@@ -217,7 +215,7 @@ function snapSelectionToWord() {
        	sel.extend(endNode, endOffset)
        	text = " " + endNode.textContent + " "
        	isw = (reg:RegExp) => reg.test(text[sel.focusOffset+m2])
-        for (let i = sel.focusOffset+m2; i < text.length && isw(regLetter); i += m1-m2)
+        for (let i = sel.focusOffset+m2; i < text.length-1 && isw(regLetter); i += m1-m2)
        		sel.modify("extend", d1, "character")
        	for (let i = sel.focusOffset+m2; i >= 0 && !isw(regLetter); i -= m1-m2)
        		sel.modify("extend", d2, "character")
@@ -264,7 +262,15 @@ function wrappe_selection(type:AnnotationType) {
 			continue
 		}
 		tag = TagWrapper(type, null)
-		range.surroundContents(tag)
+		try {
+			range.surroundContents(tag)
+		} catch(e) {
+			if (range.endContainer.textContent.length == range.endOffset)
+				range.setEndAfter(range.endContainer.parentNode)
+			if (range.startOffset == 0)
+				range.setStartBefore(range.startContainer.parentNode)
+			range.surroundContents(tag)
+		}
 		let annotation = {
 			mot: first_word,
 			nocc: (<any> range).wordOffset.nocc,

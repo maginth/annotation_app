@@ -73,7 +73,6 @@ function TagWrapper(type, tag) {
     return res;
 }
 function removeTag(tag) {
-    console.log(annotationSet.indexOf(tag.annotation));
     annotationSet.splice(annotationSet.indexOf(tag.annotation), 1);
     tag.outerHTML = tag.innerHTML;
 }
@@ -143,7 +142,6 @@ var WordOffsets = (function () {
             while (capture = pattern.exec(this.cleanText))
                 ranges.push(this.getRange(capture.index, capture.index + capture[0].length));
         }
-        console.log("exit find");
         return ranges;
     };
     return WordOffsets;
@@ -176,7 +174,7 @@ function snapSelectionToWord() {
         sel.extend(endNode, endOffset);
         text_1 = " " + endNode.textContent + " ";
         isw = function (reg) { return reg.test(text_1[sel.focusOffset + m2_1]); };
-        for (var i = sel.focusOffset + m2_1; i < text_1.length && isw(regLetter); i += m1_1 - m2_1)
+        for (var i = sel.focusOffset + m2_1; i < text_1.length - 1 && isw(regLetter); i += m1_1 - m2_1)
             sel.modify("extend", d1, "character");
         for (var i = sel.focusOffset + m2_1; i >= 0 && !isw(regLetter); i -= m1_1 - m2_1)
             sel.modify("extend", d2, "character");
@@ -221,7 +219,16 @@ function wrappe_selection(type) {
             continue;
         }
         tag = TagWrapper(type, null);
-        range.surroundContents(tag);
+        try {
+            range.surroundContents(tag);
+        }
+        catch (e) {
+            if (range.endContainer.textContent.length == range.endOffset)
+                range.setEndAfter(range.endContainer.parentNode);
+            if (range.startOffset == 0)
+                range.setStartBefore(range.startContainer.parentNode);
+            range.surroundContents(tag);
+        }
         var annotation = {
             mot: first_word,
             nocc: range.wordOffset.nocc,
