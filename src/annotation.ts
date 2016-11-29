@@ -30,7 +30,7 @@ class Annotation {
 	type: AnnotationType
 }
 
-const annotationSet:Annotation[] = [];
+let annotationSet:Annotation[] = [];
 
 /*
 	definition de l'application
@@ -43,19 +43,90 @@ var annotationApp = new Vue({
 	},
 	methods: {
 		submit_annotations: function() {
-			Vue.http.post(annotationApp.post_adress, annotationSet).then((response) => {
+			let json_annotations = JSON.stringify(annotationSet)
+			Vue.http.post(annotationApp.post_adress, json_annotations).then((response) => {
 		    annotationApp.message_submit = "(Success)"
+		    refresh(JSON.parse(response) || {})
 		  }, (response) => {
 		    annotationApp.message_submit = "(Error)"
+
+		    annotationOverlay.visible = true
+		    annotationOverlay.json_annotations = json_annotations
+		    annotationOverlay.post_adress = param.post_adress
+			annotationOverlay.refresh_data = '\n{\n\
+        "html" : "le nouveau text à charger",\n\
+        "annotations" : [{"mot": "nouveau", "nocc": 1, "longueur": 2, "type": "loi"}]\n\}'
+
+			enterAction = annotationOverlay.refresh
 		  });
+		}
+	}
+})
+/*
+	Overlay pour manipuler manuellement les donnés en cas d'erreur d'envoie des annotations
+*/
+var annotationOverlay = new Vue({
+	el: "#annotation-overlay",
+	data: {
+		visible: false,
+		post_adress: "",
+		json_annotation: ""
+	},
+	methods: {
+		refresh: function() {
+			try {
+				var parsed = JSON.parse(this.refresh_data)
+			} catch(e) {
+				alert("erreur de syntax json")
+			}
+			refresh(parsed)
+			this.visible = false
+			enterAction = annotationApp.submit_annotations
 		}
 	}
 })
 
 /*
+	ajoute l'annotation à la liste et surligne les mots
+*/ 
+function loadAnnotation(annotation:Annotation, target:Node) {
+
+	try {
+		let wos = new WordOffsets(target)
+		let range = document.createRange()
+
+		var wordIndex = wos.getWordIndex(annotation)
+		let start = wos.wordOffsets[wordIndex]
+		let end = wos.wordOffsets[wordIndex + annotation.longueur - 1]
+		range.setStart(start.node, start.offsetNode)
+		range.setEnd(end.node, end.offsetNode + end.word.length)
+		wrappe_range(annotation.type, range)
+		annotationSet.push(annotation)
+	} catch (e) {
+		console.error("annotation can't be loaded", annotation)
+	}
+}
+
+/*
+	charge le text et les annotation fournis dans data
+*/
+function refresh(data) {
+	let target = document.querySelector(param.target)
+	if (data.html) {
+		target.innerHTML = data.html
+		annotationSet = []
+	}
+	if (data.annotations) {
+		for (let annotation of data.annotations) {
+			loadAnnotation(annotation, target)
+		}
+	}
+}
+
+/*
 	scroll to the app
 */
-window.location.hash = "#annotation-app"
+window.addEventListener("load", e => window.location.hash = "#annotation-app")
 
 
 /*
@@ -65,11 +136,13 @@ let color:any = {}
 let hotkey:any = {}
 ;(param.categories as Array<any>).map(e => {color[e.name] = e.color; hotkey[e.hotkey] = e.name})
 
+let enterAction = annotationApp.submit_annotations
+
 document.addEventListener("keypress", (e:KeyboardEvent) => {
 	if (hotkey[e.key])
 		wrappe_selection(hotkey[e.key])
 	if (e.keyCode == 13)
-		annotationApp.submit_annotations()
+		enterAction()
 })
 
 /*
@@ -153,6 +226,16 @@ class WordOffsets {
 		return prev
 	}
 
+	getWordIndex(annotation:Annotation):number {
+		let word = annotation.mot.toLowerCase()
+		for (let index in this.wordOffsets) {
+			let wo = this.wordOffsets[index]
+			if (wo.nocc == annotation.nocc && wo.word == word)
+				return parseInt(index)
+		}
+		return null
+	}
+
 	getRange(offset1, offset2) {
 		let start = this.getWordOffset(offset1),
 			end   = this.getWordOffset(offset2 - 1)
@@ -207,17 +290,17 @@ function snapSelectionToWord() {
         let endNode = sel.focusNode, endOffset = sel.focusOffset
 		sel.collapse(sel.anchorNode, sel.anchorOffset)
 		
-       	for (let i = sel.anchorOffset+m1; i < text.length && !isw(regLetter); i += m1-m2)
+       	for (let i = sel.anchorOffset+m1; i >= 0 && i < text.length && !isw(regLetter); i += m1-m2)
        		sel.modify("move", d1, "character")
-        for (let i = sel.anchorOffset; i >= 0 && regLetter.test(text[i]); i -= m1-m2)
+        for (let i = sel.anchorOffset; i >= 0 && i < text.length && regLetter.test(text[i]); i -= m1-m2)
        		sel.modify("move", d2, "character")
 
        	sel.extend(endNode, endOffset)
        	text = " " + endNode.textContent + " "
        	isw = (reg:RegExp) => reg.test(text[sel.focusOffset+m2])
-        for (let i = sel.focusOffset+m2; i < text.length-1 && isw(regLetter); i += m1-m2)
+        for (let i = sel.focusOffset+m2; i >= 0 && i < text.length-1 && isw(regLetter); i += m1-m2)
        		sel.modify("extend", d1, "character")
-       	for (let i = sel.focusOffset+m2; i >= 0 && !isw(regLetter); i -= m1-m2)
+       	for (let i = sel.focusOffset+m2; i >= 0 && i < text.length-1 && !isw(regLetter); i -= m1-m2)
        		sel.modify("extend", d2, "character")
     }
 }
@@ -246,38 +329,46 @@ function wrappe_selection(type:AnnotationType) {
 	let sel = window.getSelection()
 	if (sel.isCollapsed)
 		return
-	let cleanString = sel.toString()
+	let cleanString = sel.toString().toLowerCase()
 	sel.removeAllRanges()
  	let words = cleanString.match(regWord)
 	let first_word = words[0]
 	let ranges = wos.findSimilarRanges(cleanString)
 
 	for (let range of ranges) {
-		let tag = getParentTag(range.startContainer)
-		if (tag != null) {
-			if (tag.textContent == range.toString()) {
-				TagWrapper(type, tag)
-				tag.annotation.type = type
+		
+		let tag = wrappe_range(type, range)
+		if (tag) {
+			let annotation = {
+				mot: first_word,
+				nocc: (<any> range).wordOffset.nocc,
+				longueur: words.length,
+				type
 			}
-			continue
+			tag.annotation = annotation
+			annotationSet.push(annotation)
 		}
-		tag = TagWrapper(type, null)
-		try {
-			range.surroundContents(tag)
-		} catch(e) {
-			if (range.endContainer.textContent.length == range.endOffset)
-				range.setEndAfter(range.endContainer.parentNode)
-			if (range.startOffset == 0)
-				range.setStartBefore(range.startContainer.parentNode)
-			range.surroundContents(tag)
-		}
-		let annotation = {
-			mot: first_word,
-			nocc: (<any> range).wordOffset.nocc,
-			longueur: words.length,
-			type
-		}
-		tag.annotation = annotation
-		annotationSet.push(annotation)
 	}
+}
+
+function wrappe_range(type, range) {
+	let tag = getParentTag(range.startContainer)
+	if (tag != null) {
+		if (tag.textContent == range.toString()) {
+			TagWrapper(type, tag)
+			tag.annotation.type = type
+		}
+		return tag
+	}
+	tag = TagWrapper(type, null)
+	try {
+		range.surroundContents(tag)
+	} catch(e) {
+		if (range.endContainer.textContent.length == range.endOffset)
+			range.setEndAfter(range.endContainer.parentNode)
+		if (range.startOffset == 0)
+			range.setStartBefore(range.startContainer.parentNode)
+		range.surroundContents(tag)
+	}
+	return tag
 }

@@ -1,0 +1,7 @@
+{
+    "compilerOptions": {
+        "outDir": "annotation_app",
+        "target": "es5",
+        "rootDir": "src"
+    }
+}

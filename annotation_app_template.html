@@ -1,38 +1,6 @@
-
-
 <!-- annotation app -->
 
-<style type="text/css" scoped>
-	.button {
-	    padding: 8px 15px;
-	    display: inline-block;
-	    margin: 1em;
-	}
-	.tag_wrapper, .button {
-	    border-radius: 3px;
-	    opacity: 1;
-		transition: opacity 0.7s;
-	}
-	.tag_wrapper:hover, .button:hover {
-		opacity: 0.8;
-	}
-	.key {
-		background-color: #eee;
-		border-radius: 4px;
-		font-size: 1em;
-		font-family: sans-serif;
-		display: inline-block;
-		padding: 0 0.6em;
-		line-height: 1.6em;
-		box-shadow: 1px 2px 1px #fff inset, -1px -2px 1px #aaa inset, 0 0.8px 3px rgba(0,0,20,0.5);
-	}
-	#annotation-app {
-		text-align: center;
-		border: solid #eee 1px;
-	}
-}
-
-</style>
+<link rel="stylesheet" type="text/css" href="annotation_app/annotation_app.css" scoped>
 <div id="annotation-app">
 	<div v-for="category in categories"
 		v-bind:class="'button ' + category.name"
@@ -42,9 +10,27 @@
 	</div>
 	<div class="button submit" v-on:keyup.enter="submit_annotations" v-on:click="submit_annotations" style="background-color: orange">submit {{ message_submit }} <div class="key">↩</div></div>
 </div>
+
+<div v-if="visible" id="annotation-overlay">
+  <div class="panel">
+  <h3> L'envoi des annotations à <span style="color: #4d8">{{ post_adress }}</span> a échoué</h3><br>
+      <p>Copier manuellement la liste des annotations :</p>
+      <form v-on:submit="refresh">
+      <pre> {{ json_annotations }} </pre>
+      <br>
+      <p> Le text et les annotations suivantes seront chargés :<p>
+      <textarea v-model="refresh_data">{
+        "html" : "le nouveau text à charger",
+        "annotations" : [{"mot": "nouveau", "nocc": 1, "longueur": 2, "type": "loi"}]
+      }</textarea>
+      <input type="submit" class="button" value="Submit">
+      </form>
+  </div>
+</div>
+
 <script src="https://unpkg.com/vue/dist/vue.js"></script>
 <script src="https://cdn.jsdelivr.net/vue.resource/1.0.3/vue-resource.min.js"></script>
-<script src="config.js"></script>
-<script src="annotation.js"></script>
+<script src="annotation_app/config.js"></script>
+<script src="annotation_app/annotation.js"></script>
 
 <!-- annotation app -->

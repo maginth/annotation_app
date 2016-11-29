@@ -10,6 +10,6 @@ Il s'agit d'une petite app permettant de taguer du text brute ou html en le surl
 
 – type : par exemple « avocat »
 
-Modifiez le fichier de configuration config.js pour ajouter ou supprimer des catégories d'annotations
+Modifiez le fichier de configuration annotation_app/config.js pour ajouter ou supprimer des catégories d'annotations
 
-L'intégration dans une page se fait simplement en ajoutant le code html de annotation_app_template.html dans la page (voir l'exemple) ainsi que les fichiers config.js et annotation.js à côté
+L'intégration dans une page se fait simplement en insérant le code html de annotation_app_template.html dans la page (voir l'exemple) et en copiant le dossier annotation_app à côté de la page

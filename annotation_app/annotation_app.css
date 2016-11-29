@@ -1,0 +1,57 @@
+.button {
+    padding: 8px 15px;
+    display: inline-block;
+    margin: 1em;
+}
+.tag_wrapper, .button {
+    border-radius: 3px;
+    opacity: 1;
+	transition: opacity 0.7s;
+}
+.tag_wrapper:hover, .button:hover {
+	opacity: 0.8;
+}
+.key {
+	background-color: #eee;
+	border-radius: 4px;
+	font-size: 1em;
+	font-family: sans-serif;
+	display: inline-block;
+	padding: 0 0.6em;
+	line-height: 1.6em;
+	box-shadow: 1px 2px 1px #fff inset, -1px -2px 1px #aaa inset, 0 0.8px 3px rgba(0,0,20,0.5);
+}
+#annotation-app {
+	text-align: center;
+	border: solid #eee 1px;
+}
+#annotation-overlay {
+	top: 0;
+	left: 0;
+	position: fixed;
+	background-color: rgba(0,0,0, 0.6);
+	width: 100vw;
+	height: 100vh;
+	z-index: 100;
+}
+#annotation-overlay .panel {
+	background: white;
+	border-radius: 10px;
+	box-shadow: 0 0 10px 10px rgba(0,0,0,0.4);
+	margin: 15vh 20vw 15vh 20vw;
+	max-height: 70vh;
+	width: 60vw;
+	overflow-y: auto;
+	padding: 3em;
+	text-align: center;
+}
+#annotation-overlay pre {
+	max-width: 50vw;
+	white-space: pre-wrap; 
+}
+#annotation-overlay textarea {
+	width: 80%;
+	max-width: 80%;
+	height: 10em;
+	margin: auto;
+}

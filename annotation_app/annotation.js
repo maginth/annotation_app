@@ -32,29 +32,98 @@ var annotationApp = new Vue({
     },
     methods: {
         submit_annotations: function () {
-            Vue.http.post(annotationApp.post_adress, annotationSet).then(function (response) {
+            var json_annotations = JSON.stringify(annotationSet);
+            Vue.http.post(annotationApp.post_adress, json_annotations).then(function (response) {
                 annotationApp.message_submit = "(Success)";
+                refresh(JSON.parse(response) || {});
             }, function (response) {
                 annotationApp.message_submit = "(Error)";
+                annotationOverlay.visible = true;
+                annotationOverlay.json_annotations = json_annotations;
+                annotationOverlay.post_adress = param.post_adress;
+                annotationOverlay.refresh_data = '\n{\n\
+        "html" : "le nouveau text à charger",\n\
+        "annotations" : [{"mot": "nouveau", "nocc": 1, "longueur": 2, "type": "loi"}]\n\}';
+                enterAction = annotationOverlay.refresh;
             });
         }
     }
 });
 /*
+    Overlay pour manipuler manuellement les donnés en cas d'erreur d'envoie des annotations
+*/
+var annotationOverlay = new Vue({
+    el: "#annotation-overlay",
+    data: {
+        visible: false,
+        post_adress: "",
+        json_annotation: ""
+    },
+    methods: {
+        refresh: function () {
+            try {
+                var parsed = JSON.parse(this.refresh_data);
+            }
+            catch (e) {
+                alert("erreur de syntax json");
+            }
+            refresh(parsed);
+            this.visible = false;
+            enterAction = annotationApp.submit_annotations;
+        }
+    }
+});
+/*
+    ajoute l'annotation à la liste et surligne les mots
+*/
+function loadAnnotation(annotation, target) {
+    try {
+        var wos = new WordOffsets(target);
+        var range = document.createRange();
+        var wordIndex = wos.getWordIndex(annotation);
+        var start = wos.wordOffsets[wordIndex];
+        var end = wos.wordOffsets[wordIndex + annotation.longueur - 1];
+        range.setStart(start.node, start.offsetNode);
+        range.setEnd(end.node, end.offsetNode + end.word.length);
+        wrappe_range(annotation.type, range);
+        annotationSet.push(annotation);
+    }
+    catch (e) {
+        console.error("annotation can't be loaded", annotation);
+    }
+}
+/*
+    charge le text et les annotation fournis dans data
+*/
+function refresh(data) {
+    var target = document.querySelector(param.target);
+    if (data.html) {
+        target.innerHTML = data.html;
+        annotationSet = [];
+    }
+    if (data.annotations) {
+        for (var _i = 0, _a = data.annotations; _i < _a.length; _i++) {
+            var annotation = _a[_i];
+            loadAnnotation(annotation, target);
+        }
+    }
+}
+/*
     scroll to the app
 */
-window.location.hash = "#annotation-app";
+window.addEventListener("load", function (e) { return window.location.hash = "#annotation-app"; });
 /*
     recupération de la config de param.js
 */
 var color = {};
 var hotkey = {};
 param.categories.map(function (e) { color[e.name] = e.color; hotkey[e.hotkey] = e.name; });
+var enterAction = annotationApp.submit_annotations;
 document.addEventListener("keypress", function (e) {
     if (hotkey[e.key])
         wrappe_selection(hotkey[e.key]);
     if (e.keyCode == 13)
-        annotationApp.submit_annotations();
+        enterAction();
 });
 /*
     définition de la plage de caractères que peut contenir un mot pour les délimiter
@@ -125,6 +194,15 @@ var WordOffsets = (function () {
         }
         return prev;
     };
+    WordOffsets.prototype.getWordIndex = function (annotation) {
+        var word = annotation.mot.toLowerCase();
+        for (var index in this.wordOffsets) {
+            var wo = this.wordOffsets[index];
+            if (wo.nocc == annotation.nocc && wo.word == word)
+                return parseInt(index);
+        }
+        return null;
+    };
     WordOffsets.prototype.getRange = function (offset1, offset2) {
         var start = this.getWordOffset(offset1), end = this.getWordOffset(offset2 - 1);
         var range = document.createRange();
@@ -167,16 +245,16 @@ function snapSelectionToWord() {
         var isw = function (reg) { return reg.test(text_1[sel.anchorOffset + m1_1]); };
         var endNode = sel.focusNode, endOffset = sel.focusOffset;
         sel.collapse(sel.anchorNode, sel.anchorOffset);
-        for (var i = sel.anchorOffset + m1_1; i < text_1.length && !isw(regLetter); i += m1_1 - m2_1)
+        for (var i = sel.anchorOffset + m1_1; i >= 0 && i < text_1.length && !isw(regLetter); i += m1_1 - m2_1)
             sel.modify("move", d1, "character");
-        for (var i = sel.anchorOffset; i >= 0 && regLetter.test(text_1[i]); i -= m1_1 - m2_1)
+        for (var i = sel.anchorOffset; i >= 0 && i < text_1.length && regLetter.test(text_1[i]); i -= m1_1 - m2_1)
             sel.modify("move", d2, "character");
         sel.extend(endNode, endOffset);
         text_1 = " " + endNode.textContent + " ";
         isw = function (reg) { return reg.test(text_1[sel.focusOffset + m2_1]); };
-        for (var i = sel.focusOffset + m2_1; i < text_1.length - 1 && isw(regLetter); i += m1_1 - m2_1)
+        for (var i = sel.focusOffset + m2_1; i >= 0 && i < text_1.length - 1 && isw(regLetter); i += m1_1 - m2_1)
             sel.modify("extend", d1, "character");
-        for (var i = sel.focusOffset + m2_1; i >= 0 && !isw(regLetter); i -= m1_1 - m2_1)
+        for (var i = sel.focusOffset + m2_1; i >= 0 && i < text_1.length - 1 && !isw(regLetter); i -= m1_1 - m2_1)
             sel.modify("extend", d2, "character");
     }
     var _b;
@@ -203,39 +281,45 @@ function wrappe_selection(type) {
     var sel = window.getSelection();
     if (sel.isCollapsed)
         return;
-    var cleanString = sel.toString();
+    var cleanString = sel.toString().toLowerCase();
     sel.removeAllRanges();
     var words = cleanString.match(regWord);
     var first_word = words[0];
     var ranges = wos.findSimilarRanges(cleanString);
     for (var _i = 0, ranges_1 = ranges; _i < ranges_1.length; _i++) {
         var range = ranges_1[_i];
-        var tag = getParentTag(range.startContainer);
-        if (tag != null) {
-            if (tag.textContent == range.toString()) {
-                TagWrapper(type, tag);
-                tag.annotation.type = type;
-            }
-            continue;
+        var tag = wrappe_range(type, range);
+        if (tag) {
+            var annotation = {
+                mot: first_word,
+                nocc: range.wordOffset.nocc,
+                longueur: words.length,
+                type: type
+            };
+            tag.annotation = annotation;
+            annotationSet.push(annotation);
         }
-        tag = TagWrapper(type, null);
-        try {
-            range.surroundContents(tag);
-        }
-        catch (e) {
-            if (range.endContainer.textContent.length == range.endOffset)
-                range.setEndAfter(range.endContainer.parentNode);
-            if (range.startOffset == 0)
-                range.setStartBefore(range.startContainer.parentNode);
-            range.surroundContents(tag);
-        }
-        var annotation = {
-            mot: first_word,
-            nocc: range.wordOffset.nocc,
-            longueur: words.length,
-            type: type
-        };
-        tag.annotation = annotation;
-        annotationSet.push(annotation);
     }
+}
+function wrappe_range(type, range) {
+    var tag = getParentTag(range.startContainer);
+    if (tag != null) {
+        if (tag.textContent == range.toString()) {
+            TagWrapper(type, tag);
+            tag.annotation.type = type;
+        }
+        return tag;
+    }
+    tag = TagWrapper(type, null);
+    try {
+        range.surroundContents(tag);
+    }
+    catch (e) {
+        if (range.endContainer.textContent.length == range.endOffset)
+            range.setEndAfter(range.endContainer.parentNode);
+        if (range.startOffset == 0)
+            range.setStartBefore(range.startContainer.parentNode);
+        range.surroundContents(tag);
+    }
+    return tag;
 }
