@@ -37,7 +37,7 @@ var annotationApp = new Vue({
                 if (response.status >= 200 && response.status < 207) {
                     annotationApp.message_submit = "(Success)";
                     try {
-                        var parsed = JSON.parse(response);
+                        var parsed = JSON.parse(response.data);
                     }
                     catch (e) {
                         errorNetwork();
