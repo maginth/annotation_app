@@ -34,21 +34,35 @@ var annotationApp = new Vue({
         submit_annotations: function () {
             var json_annotations = JSON.stringify(annotationSet);
             Vue.http.post(annotationApp.post_adress, json_annotations).then(function (response) {
-                annotationApp.message_submit = "(Success)";
-                refresh(JSON.parse(response) || {});
+                if (response.status >= 200 && response.status < 207) {
+                    annotationApp.message_submit = "(Success)";
+                    try {
+                        var parsed = JSON.parse(response);
+                    }
+                    catch (e) {
+                        errorNetwork();
+                    }
+                    refresh(parsed);
+                }
+                else
+                    errorNetwork();
             }, function (response) {
-                annotationApp.message_submit = "(Error)";
-                annotationOverlay.visible = true;
-                annotationOverlay.json_annotations = json_annotations;
-                annotationOverlay.post_adress = param.post_adress;
-                annotationOverlay.refresh_data = '\n{\n\
-        "html" : "le nouveau text à charger",\n\
-        "annotations" : [{"mot": "nouveau", "nocc": 1, "longueur": 2, "type": "loi"}]\n\}';
-                enterAction = annotationOverlay.refresh;
+                errorNetwork();
             });
         }
     }
 });
+function errorNetwork() {
+    var ovl = annotationOverlay;
+    annotationApp.message_submit = "(Error)";
+    ovl.visible = true;
+    ovl.json_annotations = JSON.stringify(annotationSet);
+    ovl.post_adress = param.post_adress;
+    ovl.refresh_data = '\n{\n\
+"html" : "le nouveau text à charger",\n\
+"annotations" : [{"mot": "nouveau", "nocc": 1, "longueur": 2, "type": "loi"}]\n\}';
+    enterAction = ovl.refresh;
+}
 /*
     Overlay pour manipuler manuellement les donnés en cas d'erreur d'envoie des annotations
 */
@@ -117,7 +131,10 @@ window.addEventListener("load", function (e) { return window.location.hash = "#a
 */
 var color = {};
 var hotkey = {};
-param.categories.map(function (e) { color[e.name] = e.color; hotkey[e.hotkey] = e.name; });
+param.categories.map(function (e) {
+    color[e.name] = e.color;
+    hotkey[e.hotkey] = e.name;
+});
 var enterAction = annotationApp.submit_annotations;
 document.addEventListener("keypress", function (e) {
     if (hotkey[e.key])
